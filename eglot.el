@@ -1447,19 +1447,26 @@ COMMAND is a symbol naming the command."
                               'face (if (<= type 1) 'error))
                   type message))
 
+(defvar eglot-show-long-notification nil
+  "If non-nil, the this is a function that will be used to display a long message from the server")
+
 (cl-defmethod eglot-handle-request
   (_server (_method (eql window/showMessageRequest)) &key type message actions)
   "Handle server request window/showMessageRequest"
-  (or (completing-read
-       (concat
-        (format (propertize "[eglot] Server reports (type=%s): %s"
-                            'face (if (<= type 1) 'error))
-                type message)
-        "\nChoose an option: ")
-       (or (mapcar (lambda (obj) (plist-get obj :title)) actions)
-           '("OK"))
-       nil t (plist-get (elt actions 0) :title))
-      (jsonrpc-error :code -32800 :message "User cancelled")))
+  (let ((lines (split-string message "\n")))
+	(if (and
+		 (functionp eglot-show-long-notification) (> (length lines) 1))
+		(funcall eglot-show-long-notification message))
+	(or (completing-read
+		 (concat
+		  (format (propertize "[eglot] Server reports (type=%s): %s"
+							  'face (if (<= type 1) 'error))
+				  type (last lines))
+		  "\nChoose an option: ")
+		 (or (mapcar (lambda (obj) (plist-get obj :title)) actions)
+			 '("OK"))
+		 nil t (plist-get (elt actions 0) :title))
+		(jsonrpc-error :code -32800 :message "User cancelled"))))
 
 (cl-defmethod eglot-handle-notification
   (_server (_method (eql window/logMessage)) &key _type _message)
