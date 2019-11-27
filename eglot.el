@@ -1454,19 +1454,20 @@ COMMAND is a symbol naming the command."
   (_server (_method (eql window/showMessageRequest)) &key type message actions)
   "Handle server request window/showMessageRequest"
   (let ((lines (split-string message "\n")))
-	(if (and
-		 (functionp eglot-show-long-notification) (> (length lines) 1))
+	(if (functionp eglot-show-long-notification)
 		(funcall eglot-show-long-notification message))
 	(or (completing-read
 		 (concat
 		  (format (propertize "[eglot] Server reports (type=%s): %s"
 							  'face (if (<= type 1) 'error))
-				  type (last lines))
+				  type message)
 		  "\nChoose an option: ")
 		 (or (mapcar (lambda (obj) (plist-get obj :title)) actions)
 			 '("OK"))
 		 nil t (plist-get (elt actions 0) :title))
-		(jsonrpc-error :code -32800 :message "User cancelled"))))
+		(jsonrpc-error :code -32800 :message "User cancelled"))
+	(if (functionp eglot-show-long-notification)
+		(funcall eglot-show-long-notification nil))))
 
 (cl-defmethod eglot-handle-notification
   (_server (_method (eql window/logMessage)) &key _type _message)
